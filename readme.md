@@ -24,12 +24,12 @@ pico8-games/
 ├── index.html # Main page with game list
 ├── README.md  # This file
 ├── games/     # Folder with .p8 files
-│   ├── game1.p8
-│   ├── space-shooter.p8
-│   └── puzzle-game.p8
+│   └── ddotg.p8
+├── sources/
+│   └── ddotg.lua
 └── web/        # Exported HTML/JS versions
      ├── ddotg.html
-     ├── ddotg.js
+     └── ddotg.js
 ```
 
 ## 🚀 How to Play
