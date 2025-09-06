@@ -45,7 +45,7 @@ pico8-games/
 3. Run with the `run` command
 
 ### Option 3: Remote Web Browser
-1. Go to github.com/original-pico-8/index.html
+1. Go to [github.com/original-pico-8/index.html](https://steelcodeteam.github.io/PICO-8-Games/index.html)
 3. Run games
 
 ## 🎮 Controls
