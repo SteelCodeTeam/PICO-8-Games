@@ -1,0 +1,516 @@
+points = nil
+clicks_per_click = nil
+auto_clicks = 0
+last_auto = 0
+
+selected_upgrade = 1
+click_animation = 0
+click_type = 0
+
+upgrades = nil
+
+function _init()
+    points = bn_zero()
+    clicks_per_click = bn_one()
+    upgrades = {
+        {
+            name="ram", 
+            type="power",
+            level=0,
+            level_data={
+                l1={value=bn_one(), cost=bn_from_string("15")},
+                l2={value=bn_from_string("2"), cost=bn_from_string("65")},
+                l3={value=bn_from_string("4"), cost=bn_from_string("175")},
+                l4={value=bn_from_string("6"), cost=bn_from_string("605")},
+                l5={value=bn_from_string("8"), cost=bn_from_string("1815")},
+                l6={value=bn_from_string("12"), cost=bn_from_string("4645")},
+                l7={value=bn_from_string("20"), cost=bn_from_string("15935")},
+                l8={value=bn_from_string("35"), cost=bn_from_string("42805")},
+                l9={value=bn_from_string("60"), cost=bn_from_string("108415")},
+                l10={value=bn_from_string("100"), cost=bn_from_string("495245")}
+            }
+        },
+
+        {
+            name="hdd", 
+            level=0, 
+            type="auto", 
+            level_data={
+                l1={value=create_decimal_bn(0.5), cost=bn_from_string("50")},
+                l2={value=bn_one(), cost=bn_from_string("250")},
+                l3={value=bn_from_string("2"), cost=bn_from_string("1000")},
+                l4={value=bn_from_string("4"), cost=bn_from_string("4200")},
+                l5={value=bn_from_string("6"), cost=bn_from_string("22800")},
+                l6={value=bn_from_string("8"), cost=bn_from_string("61200")},
+                l7={value=bn_from_string("10"), cost=bn_from_string("404800")},
+                l8={value=bn_from_string("15"), cost=bn_from_string("819200")},
+                l9={value=bn_from_string("20"), cost=bn_from_string("1276800")},
+                l10={value=bn_from_string("30"), cost=bn_from_string("13107200")}
+            }
+        },
+
+        {
+            name="cpu", 
+            type="power",
+            level=0, 
+            level_data={
+                l1={value=bn_from_string("5"), cost=bn_from_string("600")},
+                l2={value=bn_from_string("15"), cost=bn_from_string("2500")},
+                l3={value=bn_from_string("40"), cost=bn_from_string("12500")},
+                l4={value=bn_from_string("100"), cost=bn_from_string("62500")},
+                l5={value=bn_from_string("200"), cost=bn_from_string("312500")},
+                l6={value=bn_from_string("400"), cost=bn_from_string("962500")},
+                l7={value=bn_from_string("800"), cost=bn_from_string("2812500")},
+                l8={value=bn_from_string("1250"), cost=bn_from_string("9062500")},
+                l9={value=bn_from_string("2500"), cost=bn_from_string("15312500")},
+                l10={value=bn_from_string("5000"), cost=bn_from_string("76562500")}
+            }
+        },
+
+        {
+            name="gpu", 
+            type="auto", 
+            level=0, 
+            level_data={
+                l1={value=bn_from_string("2"), cost=bn_from_string("2000")},
+                l2={value=bn_from_string("6"), cost=bn_from_string("12000")},
+                l3={value=bn_from_string("10"), cost=bn_from_string("72000")},
+                l4={value=bn_from_string("18"), cost=bn_from_string("332000")},
+                l5={value=bn_from_string("30"), cost=bn_from_string("992000")},
+                l6={value=bn_from_string("50"), cost=bn_from_string("5552000")},
+                l7={value=bn_from_string("80"), cost=bn_from_string("9312000")},
+                l8={value=bn_from_string("120"), cost=bn_from_string("19872000")},
+                l9={value=bn_from_string("170"), cost=bn_from_string("99232000")},
+                l10={value=bn_from_string("250"), cost=bn_from_string("155392000")}
+            }
+        },
+
+        {
+            name="you", 
+            type="both",
+            level=0, 
+            level_data={
+                l1={value=bn_from_string("5"), cost=bn_from_string("10000")},
+                l2={value=bn_from_string("15"), cost=bn_from_string("100000")},
+                l3={value=bn_from_string("50"), cost=bn_from_string("500000")},
+                l4={value=bn_from_string("150"), cost=bn_from_string("10000000")},
+                l5={value=bn_from_string("500"), cost=bn_from_string("50000000")},
+                l6={value=bn_from_string("1500"), cost=bn_from_string("100000000")},
+                l7={value=bn_from_string("5000"), cost=bn_from_string("500000000")},
+                l8={value=bn_from_string("15000"), cost=bn_from_string("1000000000")},
+                l9={value=bn_from_string("50000"), cost=bn_from_string("5000000000")},
+                l10={value=bn_from_string("100000"), cost=bn_from_string("99999999999")}
+            }
+        }
+    }
+end
+
+function _update60()
+    if btnp(0) then
+        do_click()
+        click_type = 1
+        click_animation = 10
+    end
+    
+    if btnp(1) then
+        do_click()
+        click_type = 2
+        click_animation = 10
+    end
+
+    if btnp(2) then
+        selected_upgrade = max(1, selected_upgrade - 1)
+    end
+    
+    if btnp(3) then
+        selected_upgrade = min(#upgrades, selected_upgrade + 1)
+    end
+
+    if btnp(4) then -- z
+        buy_upgrade(selected_upgrade)
+    end
+
+     if auto_clicks > 0 then
+        local current_time = time()
+        local time_diff = current_time - last_auto
+        
+        local clicks_to_process = flr(auto_clicks * time_diff)
+        
+        if clicks_to_process > 0 then
+            local total_gain = create_bignumber(0)
+            for i = 1, clicks_to_process do
+                total_gain = bignumber_add(total_gain, clicks_per_click)
+            end
+            
+            points = bignumber_add(points, total_gain)
+            last_auto = current_time
+            
+            if click_animation <= 0 then
+                click_animation = 5
+                click_type = 0
+            end
+        end
+    end
+
+    if click_animation > 0 then
+        click_animation -= 1
+    end
+end
+
+function buy_upgrade(idx)
+    local upgrade = upgrades[idx]
+    if upgrade.level >= 10 then
+        return
+    end
+
+    local l = upgrade.level + 1
+    local cost = upgrade.level_data["l"..l].cost
+    
+    if bignumber_compare(points, cost) >= 0 then
+        points = bignumber_subtract(points, cost)
+        upgrade.level += 1
+        recalculate_stats()
+    end
+end
+
+function recalculate_stats()
+    clicks_per_click = bn_one()
+    auto_clicks = 0
+    
+    for upgrade in all(upgrades) do
+        if (upgrade.type == "power" or upgrade.type == "both") and upgrade.level > 0 then
+            local l = upgrade.level
+            clicks_per_click = bignumber_add(clicks_per_click, upgrade.level_data["l"..l].value)
+        end
+        
+        if (upgrade.type == "auto" or upgrade.type == "both") and upgrade.level > 0 then
+            local l = upgrade.level
+            auto_clicks += extract_decimal_from_bn(upgrade.level_data["l"..l].value)
+        end
+    end
+end
+
+function do_click()
+    points = bignumber_add(points, clicks_per_click)
+end
+
+function _draw()
+    cls(0)
+
+    print("pico-clicker", 5, 5, 9)
+    print("bytes: "..format_scientific(points), 5, 15, 12)
+    print("+"..format_scientific(clicks_per_click).." per click", 5, 25, 11)
+
+    draw_center_graphics()
+    draw_upgrades()
+
+    if auto_clicks > 0 then
+        local auto_display = auto_clicks
+        if auto_clicks >= 1 then
+            auto_display = flr(auto_clicks * 10) / 10
+        end
+        print("autobytes: "..auto_display.."/s", 5, 35, 9)
+    end
+end
+
+function draw_center_graphics()
+    local x = 40
+    local y = 64
+    local base_size = 8
+
+    if click_animation > 0 then
+        local size = base_size + click_animation
+        
+        if click_type == 1 then
+            draw_chip(x-5, y, size, 12, 1)
+            print("<<<", x-15, y-3, 7)
+        elseif click_type == 2 then
+            draw_ram(x+5, y, size, 8)
+            print(">>>", x+5, y-3, 7)
+        else
+            draw_server(x, y, size, 11)
+            print("auto", x-8, y-10, 7)
+        end
+    else
+        draw_computer(x, y, base_size)
+    end
+end
+
+function draw_computer(x, y, size)
+    local w = size + 2
+    local h = size
+    
+    rectfill(x-w, y-h, x+w, y+h, 6)
+    rectfill(x-w+1, y-h+1, x+w-1, y+h-1, 0)
+    
+    local pixel_count = min(6, rnd(2, 20) + 2)
+    for i=1,pixel_count do
+        pset(x-w+2+rnd(w*2-3), y-h+2+rnd(h*2-3), 7)
+    end
+    
+    rectfill(x-2, y+h, x+2, y+h+2, 13)
+end
+
+function draw_chip(x, y, size, color)
+    rectfill(x-size, y-size, x+size, y+size, color)
+    rectfill(x-size+1, y-size+1, x+size-1, y+size-1, 1)
+    line(x-size+2, y, x+size-2, y, color)
+    line(x, y-size+2, x, y+size-2, color)
+end
+
+function draw_ram(x, y, size, color)
+    local w = size + 1
+    local h = size
+    rectfill(x-w, y-h, x+w, y+h, color)
+    rectfill(x-w+1, y-h+1, x+w-1, y+h-1, 1)
+    
+    for i=0,2 do
+        line(x-w+2+i*2, y+h, x-w+2+i*2, y+h+1, 9)
+    end
+end
+
+function draw_server(x, y, size, color)
+    local w = size
+    local h = size + 2
+    rectfill(x-w, y-h, x+w, y+h, color)
+    rectfill(x-w+1, y-h+1, x+w-1, y+h-1, 1)
+    pset(x+w-2, y-h+2, 11)
+end
+
+function draw_upgrades()
+    rectfill(85, 5, 127, 123, 1)
+    rect(85, 5, 127, 123, 7)
+    
+    print("upgrades", 88, 8, 7)
+    
+    local y_start = 17
+    for i = 1, #upgrades do
+        local y = y_start + (i - 1) * 22
+        local upgrade = upgrades[i]
+        local color = 6
+        
+        if i == selected_upgrade then
+            rect(86, y-2, 126, y+18, 7)
+            color = 7
+        end
+        
+        print(upgrade.name, 88, y, color)
+        print("lv:"..upgrade.level, 88, y+5, color-1)
+        
+        if upgrade.level < 10 then
+            local l = upgrade.level + 1
+            local cost = format_scientific(upgrade.level_data["l"..l].cost)
+            print(cost, 88, y+10, color-1)
+        else
+            print("max", 88, y+10, 10)
+        end
+    end
+    
+    print("up/down - nav", 2, 107, 5)
+    print("z - buy", 2, 113, 5)
+    print("left/right - click", 2, 119, 5)
+end
+
+--big numbers!!
+
+function create_bignumber(str_or_num)
+  local num = {}
+  
+  if str_or_num == nil or str_or_num == 0 then
+    return {0}
+  end
+  
+  if type(str_or_num) == "number" and str_or_num < 30000 then
+    local value = str_or_num
+    while value > 0 do
+      add(num, value % 10)
+      value = flr(value / 10)
+    end
+    return num
+  end
+  
+  local str = tostr(str_or_num)
+  
+  for i = #str, 1, -1 do
+    local digit = tonum(sub(str, i, i))
+    if digit then
+      add(num, digit)
+    end
+  end
+  
+  return num
+end
+
+function bn_from_string(str)
+  local num = {}
+  for i = #str, 1, -1 do
+    local digit = tonum(sub(str, i, i))
+    if digit and digit >= 0 and digit <= 9 then
+      add(num, digit)
+    end
+  end
+  return #num > 0 and num or {0}
+end
+
+function bn_zero() return {0} end
+function bn_one() return {1} end
+function bn_ten() return {0,1} end -- 10
+function bn_hundred() return {0,0,1} end -- 100
+
+function bignumber_add(a, b)
+  local result = {}
+  local carry = 0
+  local max_len = max(#a, #b)
+  
+  for i = 1, max_len do
+    local digit_a = a[i] or 0
+    local digit_b = b[i] or 0
+    local sum = digit_a + digit_b + carry
+    
+    add(result, sum % 10)
+    carry = flr(sum / 10)
+  end
+  
+  if carry > 0 then
+    add(result, carry)
+  end
+  
+  return result
+end
+
+function bignumber_multiply_by_small(big_num, multiplier)
+  local result = {}
+  local carry = 0
+  
+  for i = 1, #big_num do
+    local product = big_num[i] * multiplier + carry
+    add(result, product % 10)
+    carry = flr(product / 10)
+  end
+  
+  while carry > 0 do
+    add(result, carry % 10)
+    carry = flr(carry / 10)
+  end
+  
+  return result
+end
+
+function bignumber_to_string(big_num)
+  local str = ""
+  
+  for i = #big_num, 1, -1 do
+    str = str .. big_num[i]
+  end
+  
+  return str
+end
+
+function format_with_commas(big_num)
+  local str = bignumber_to_string(big_num)
+  local result = ""
+  local len = #str
+  
+  for i = 1, len do
+    result = result .. sub(str, i, i)
+    if (len - i) % 3 == 0 and i != len then
+      result = result .. ","
+    end
+  end
+  
+  return result
+end
+
+function format_scientific(big_num)
+  local digits = #big_num
+  
+  if digits <= 6 then
+    return bignumber_to_string(big_num)
+  end
+  
+  local first_digit = big_num[digits]
+  local second_digit = big_num[digits-1] or 0
+  local third_digit = big_num[digits-2] or 0
+  
+  return first_digit .. "." .. second_digit .. third_digit .. "e" .. (digits-1)
+end
+
+function bignumber_compare(a, b)
+  if #a > #b then return 1 end
+  if #a < #b then return -1 end
+  
+  for i = #a, 1, -1 do
+    if a[i] > b[i] then return 1 end
+    if a[i] < b[i] then return -1 end
+  end
+  
+  return 0
+end
+
+function multiply_by_power_of_10(big_num, power)
+  local result = {}
+  
+  for i = 1, power do
+    add(result, 0)
+  end
+  
+  for i = 1, #big_num do
+    add(result, big_num[i])
+  end
+  
+  return result
+end
+
+
+function create_decimal_bn(decimal_value)
+    if decimal_value < 1 then
+        return {5, -1} 
+    else
+        return create_bignumber(flr(decimal_value))
+    end
+end
+
+function extract_decimal_from_bn(bn)
+    if #bn >= 2 and bn[2] == -1 then
+        return bn[1] / 10
+    else
+        local result = 0
+        local multiplier = 1
+        for i = 1, min(#bn, 4) do 
+            result += bn[i] * multiplier
+            multiplier *= 10
+        end
+        return result
+    end
+end
+
+function bignumber_subtract(a, b)
+    if bignumber_compare(a, b) < 0 then
+        return bn_zero()
+    end
+    
+    local result = {}
+    local borrow = 0
+    local max_len = max(#a, #b)
+    
+    for i = 1, max_len do
+        local digit_a = (a[i] or 0) - borrow
+        local digit_b = b[i] or 0
+        
+        if digit_a < digit_b then
+            digit_a += 10
+            borrow = 1
+        else
+            borrow = 0
+        end
+        
+        local diff = digit_a - digit_b
+        add(result, diff)
+    end
+    
+    while #result > 1 and result[#result] == 0 do
+        result[#result] = nil
+    end
+    
+    return #result > 0 and result or bn_zero()
+end
